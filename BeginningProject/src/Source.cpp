@@ -1,6 +1,41 @@
 #include <glew.h>
 #include <glfw3.h>
 #include <iostream>
+#include <fstream>
+#include <sstream>
+
+struct ShaderProgrameSource
+{
+    std::string VertexSource;
+    std::string FramentSource;
+};
+
+static ShaderProgrameSource ParseShader(const std::string& filepath) {
+    enum class ShaderType {
+        NONE = -1, VERTEX = 0, FRAGMENT = 1
+    };
+
+    std::ifstream stream(filepath);
+
+    std::string line;
+    std::stringstream ss[2];
+    ShaderType type = ShaderType::NONE;
+    while (getline(stream, line)) {
+        if (line.find("#shader") != std::string::npos) {
+            if (line.find("vertex") != std::string::npos) {
+                type = ShaderType::VERTEX;
+            }
+            else if (line.find("fragment") != std::string::npos) {
+                type = ShaderType::FRAGMENT;
+            }
+        }
+        else
+        {
+            ss[(int)type] << line << '\n';
+        }
+    }
+    return { ss[0].str(), ss[1].str() };
+}
 
 static unsigned int CompileShader(unsigned int type, const std::string& source) {
     unsigned int id = glCreateShader(type);
@@ -82,28 +117,13 @@ int main(void)
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0);
 
-    const std::string vs = R"glsl(
-    #version 330 core
+    ShaderProgrameSource source = ParseShader("src/res/shaders/Basic.shader");
+    //std::cout << "VERTEX" << std::endl;
+    //std::cout << source.VertexSource << std::endl;
+    //std::cout << "FRAGMENT" << std::endl;
+    //std::cout << source.FramentSource << std::endl;
 
-    layout(location = 0) in vec4 position;
-
-    void main(){
-       gl_Position = position;
-    }
-    )glsl";
-
-    std::string fs = R"glsl(
-        #version 330 core
-        
-        layout(location = 0) out vec4 color;
-        
-        void main()
-        {
-            color = vec4(1.0, 0.0, 0.0, 1.0);
-        }
-        )glsl";
-
-    unsigned int shader = CreatShader(vs, fs);
+    unsigned int shader = CreatShader(source.VertexSource, source.FramentSource);
     glUseProgram(shader);
 
         /* Loop until the user closes the window */
@@ -122,9 +142,7 @@ int main(void)
             glfwPollEvents();
         };
 
-        //is there any real differance in these two? 
         glDeleteProgram(shader);
-        //glDeleteShader(shader);
 
         glfwTerminate();
         return 0;
